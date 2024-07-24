@@ -1024,7 +1024,7 @@ TS2EPConverter logging starts from here.
 INFO: (TORCH_LOGS="export" <cmd>)
     * Log TorchScript IR.
 
-DEBUG: (TORCH_LOGS="+export" <cmd>), additionally
+DEBUG: (TORCH_LOGS="+export" <cmd>), additionaly
     * Log conversion IR by IR in a format of [<conversion handler name>] converts [<IR>].
         """
         )
