@@ -4,6 +4,7 @@ import logging
 import operator
 import warnings
 
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 import torch
@@ -259,6 +260,15 @@ def get_op_overload(node: torch._C.Node):
     return op_overload
 
 
+@dataclass
+class QuantizationConfig:
+    """Meta data to keep track of quantization metadtaa and whether it is enabled."""
+    scale: float = 0
+    zero_point: int = 0
+    dtype: torch.dtype = 0
+    on: bool = False
+
+
 class TS2FXGraphConverter:
     def __init__(
         self,
@@ -314,6 +324,9 @@ class TS2FXGraphConverter:
                 handler_func_name,
                 lambda node: self._convert_standard_operators(node),
             )
+
+        # Quantization setting.
+        self.quant_config = QuantizationConfig()
 
     def _is_get_attr_node(self, fqn):
         return (
@@ -560,6 +573,13 @@ class TS2FXGraphConverter:
         target = get_op_overload(node)
 
         args, kwargs = self.get_args_kwargs(node, target._schema)
+
+        # Turn on quantization since here if there is a quantize_tensor call.
+        if str(target) == "aten.quantize_per_tensor.default":
+            self.quant_config.on = True
+            self.quant_config.scale = args[1]
+            self.quant_config.zero_point = args[2]
+            self.quant_config.dtype = args[3]
 
         fx_node = self.fx_graph.call_function(target, args, kwargs)
 
