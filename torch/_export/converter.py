@@ -9,6 +9,8 @@ from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 import torch
 import torch.export._trace
+from torch.ao.quantization.utils import calculate_qmin_qmax
+from torch.ao.quantization.fx._decomposed import quantize_per_tensor, dequantize_per_tensor
 
 from torch.export.exported_program import ExportedProgram
 from torch.export.graph_signature import (
@@ -83,6 +85,8 @@ _TORCH_DTYPE_TO_ENUM = {
     torch.complex64: 9,
     torch.complex128: 10,
     torch.bool: 11,
+    torch.qint8: 12,
+    torch.quint8: 13,
     torch.bfloat16: 15,
 }
 
@@ -263,9 +267,10 @@ def get_op_overload(node: torch._C.Node):
 @dataclass
 class QuantizationConfig:
     """Meta data to keep track of quantization metadtaa and whether it is enabled."""
-    scale: float = 0
-    zero_point: int = 0
-    dtype: torch.dtype = 0
+
+    scale: Any = None
+    zero_point: Any = None
+    dtype: Any = None
     on: bool = False
 
 
@@ -569,19 +574,67 @@ class TS2FXGraphConverter:
         else:
             self.name_to_non_tensor_attribute_node[attr_fqn] = ts_graph_tensor_input
 
-    def convert_call_function_op(self, node: torch._C.Node):
+    def _get_quantized_fx_node(self, inp, dequant=False):
+        if not dequant:
+            fx_node = self.fx_graph.call_function(
+                quantize_per_tensor,
+                (
+                    inp,
+                    self.quant_config.scale,
+                    self.quant_config.zero_point,
+                    self.quant_config.qmin,
+                    self.quant_config.qmax,
+                    self.quant_config.dtype,
+                ),
+            )
+        else:
+            fx_node = self.fx_graph.call_function(
+                dequantize_per_tensor,
+                (
+                    inp,
+                    self.quant_config.scale,
+                    self.quant_config.zero_point,
+                    self.quant_config.qmin,
+                    self.quant_config.qmax,
+                    self.quant_config.dtype,
+                ),
+            )
+        return fx_node
+
+    def convert_aten_quantize_per_tensor(self, node: torch._C.Node):
         target = get_op_overload(node)
 
         args, kwargs = self.get_args_kwargs(node, target._schema)
 
         # Turn on quantization since here if there is a quantize_tensor call.
-        if str(target) == "aten.quantize_per_tensor.default":
-            self.quant_config.on = True
-            self.quant_config.scale = args[1]
-            self.quant_config.zero_point = args[2]
-            self.quant_config.dtype = args[3]
+        self.quant_config.on = True
+        self.quant_config.scale = args[1]
+        self.quant_config.zero_point = args[2]
+        self.quant_config.dtype = _TORCH_ENUM_TO_DTYPE[args[3]]
 
-        fx_node = self.fx_graph.call_function(target, args, kwargs)
+        qmin, qmax = calculate_qmin_qmax(None, None, False, self.quant_config.dtype, False)
+        self.quant_config.qmin = qmin
+        self.quant_config.qmax = qmax
+
+        fx_node = self._get_quantized_fx_node(args[0])
+
+        output_name = node.output().debugName()
+        self.name_to_node[output_name] = fx_node
+
+    def convert_call_function_op(self, node: torch._C.Node):
+        target = get_op_overload(node)
+
+        args, kwargs = self.get_args_kwargs(node, target._schema)
+
+        if str(target) == "quantized.conv2d.new":
+            args = list(args)
+            args[0] = self._get_quantized_fx_node(args[0], dequant=True)
+            args[1] = self._get_quantized_fx_node(args[1], dequant=True)
+            target = torch.ops.aten.conv2d
+            fx_node = self.fx_graph.call_function(target, tuple(args), kwargs)
+            fx_node = self._get_quantized_fx_node(fx_node)
+        else:
+            fx_node = self.fx_graph.call_function(target, args, kwargs)
 
         # TODO: covnert sourceRange() into stack_trace
         # fx_node.meta["stack_trace"] = node.sourceRange()

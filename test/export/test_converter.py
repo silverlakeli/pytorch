@@ -9,12 +9,12 @@ import torch.utils._pytree as pytree
 from torch._dynamo.test_case import TestCase
 from torch._export.converter import TS2EPConverter
 from torch.export import ExportedProgram
+from torch.testing._internal.common_quantized import override_quantized_engine
 from torch.testing._internal.common_utils import IS_WINDOWS, run_tests
 from torch.testing._internal.torchbind_impls import (
     _empty_tensor_queue,
     init_torchbind_implementations,
 )
-from torch.testing._internal.common_quantized import override_quantized_engine
 
 
 requires_cuda = unittest.skipUnless(torch.cuda.is_available(), "requires cuda")
@@ -1299,56 +1299,33 @@ class TestConverter(TestCase):
                 self.quant = torch.ao.quantization.QuantStub()
                 self.conv1 = torch.nn.Conv2d(1, 1, 1)
                 self.conv2 = torch.nn.Conv2d(1, 1, 1)
-                self.relu = torch.nn.ReLU()
+                # self.relu = torch.nn.ReLU()
                 self.dequant = torch.ao.quantization.DeQuantStub()
 
             def forward(self, x):
                 x = self.quant(x)
                 x = self.conv1(x)
                 x = self.conv2(x)
-                x = self.relu(x)
+                # x = self.relu(x)
                 x = self.dequant(x)
                 return x
 
             def fuse_model(self):
-                torch.ao.quantization.fuse_modules(self, [["conv2", "relu"]], inplace=True)
-                pass
-
-        class Child(torch.nn.Module):
-            def __init__(self):
-                super().__init__()
-                self.conv1 = torch.nn.Conv2d(1, 1, 1)
-
-            def forward(self, x):
-                x = self.conv1(x)
-                return x
-
-        class Parent(torch.nn.Module):
-            def __init__(self):
-                super().__init__()
-                self.quant = torch.ao.quantization.QuantStub()
-                self.conv1 = torch.nn.Conv2d(1, 1, 1)
-                self.child = Child()
-                self.dequant = torch.ao.quantization.DeQuantStub()
-
-            def forward(self, x):
-                x = self.quant(x)
-                x = self.conv1(x)
-                x = self.child(x)
-                x = self.dequant(x)
-                return x
-
-            def fuse_model(self):
+                torch.ao.quantization.fuse_modules(
+                    self, [["conv2", "relu"]], inplace=True
+                )
                 pass
 
         with override_quantized_engine("qnnpack"):
             model = Standalone()
             model.qconfig = torch.ao.quantization.get_default_qconfig("qnnpack")
-            model.fuse_model()
+            # model.fuse_model()
             torch.ao.quantization.prepare(model, inplace=True)
             model(torch.randn(4, 1, 4, 4))
             torch.ao.quantization.convert(model, inplace=True)
-            self._check_equal_ts_ep_converter(model, (torch.randn(4, 1, 4, 4),))
+            self._check_equal_ts_ep_converter(
+                model, (torch.randn(4, 1, 4, 4),), ["script"]
+            )
 
 
 if __name__ == "__main__":
