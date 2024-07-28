@@ -4,13 +4,13 @@ import logging
 import operator
 import warnings
 
-from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 import torch
 import torch.export._trace
-from torch.ao.quantization.utils import calculate_qmin_qmax
-from torch.ao.quantization.fx._decomposed import quantize_per_tensor, dequantize_per_tensor
+from torch._export.passes.replace_quantized_ops_with_standard_ops_pass import (
+    replace_quantized_ops_with_standard_ops,
+)
 
 from torch.export.exported_program import ExportedProgram
 from torch.export.graph_signature import (
@@ -264,16 +264,6 @@ def get_op_overload(node: torch._C.Node):
     return op_overload
 
 
-@dataclass
-class QuantizationConfig:
-    """Meta data to keep track of quantization metadtaa and whether it is enabled."""
-
-    scale: Any = None
-    zero_point: Any = None
-    dtype: Any = None
-    on: bool = False
-
-
 class TS2FXGraphConverter:
     def __init__(
         self,
@@ -329,9 +319,6 @@ class TS2FXGraphConverter:
                 handler_func_name,
                 lambda node: self._convert_standard_operators(node),
             )
-
-        # Quantization setting.
-        self.quant_config = QuantizationConfig()
 
     def _is_get_attr_node(self, fqn):
         return (
@@ -574,67 +561,12 @@ class TS2FXGraphConverter:
         else:
             self.name_to_non_tensor_attribute_node[attr_fqn] = ts_graph_tensor_input
 
-    def _get_quantized_fx_node(self, inp, dequant=False):
-        if not dequant:
-            fx_node = self.fx_graph.call_function(
-                quantize_per_tensor,
-                (
-                    inp,
-                    self.quant_config.scale,
-                    self.quant_config.zero_point,
-                    self.quant_config.qmin,
-                    self.quant_config.qmax,
-                    self.quant_config.dtype,
-                ),
-            )
-        else:
-            fx_node = self.fx_graph.call_function(
-                dequantize_per_tensor,
-                (
-                    inp,
-                    self.quant_config.scale,
-                    self.quant_config.zero_point,
-                    self.quant_config.qmin,
-                    self.quant_config.qmax,
-                    self.quant_config.dtype,
-                ),
-            )
-        return fx_node
-
-    def convert_aten_quantize_per_tensor(self, node: torch._C.Node):
-        target = get_op_overload(node)
-
-        args, kwargs = self.get_args_kwargs(node, target._schema)
-
-        # Turn on quantization since here if there is a quantize_tensor call.
-        self.quant_config.on = True
-        self.quant_config.scale = args[1]
-        self.quant_config.zero_point = args[2]
-        self.quant_config.dtype = _TORCH_ENUM_TO_DTYPE[args[3]]
-
-        qmin, qmax = calculate_qmin_qmax(None, None, False, self.quant_config.dtype, False)
-        self.quant_config.qmin = qmin
-        self.quant_config.qmax = qmax
-
-        fx_node = self._get_quantized_fx_node(args[0])
-
-        output_name = node.output().debugName()
-        self.name_to_node[output_name] = fx_node
-
     def convert_call_function_op(self, node: torch._C.Node):
         target = get_op_overload(node)
 
         args, kwargs = self.get_args_kwargs(node, target._schema)
 
-        if str(target) == "quantized.conv2d.new":
-            args = list(args)
-            args[0] = self._get_quantized_fx_node(args[0], dequant=True)
-            args[1] = self._get_quantized_fx_node(args[1], dequant=True)
-            target = torch.ops.aten.conv2d
-            fx_node = self.fx_graph.call_function(target, tuple(args), kwargs)
-            fx_node = self._get_quantized_fx_node(fx_node)
-        else:
-            fx_node = self.fx_graph.call_function(target, args, kwargs)
+        fx_node = self.fx_graph.call_function(target, args, kwargs)
 
         # TODO: covnert sourceRange() into stack_trace
         # fx_node.meta["stack_trace"] = node.sourceRange()
@@ -1145,6 +1077,9 @@ DEBUG: (TORCH_LOGS="+export" <cmd>), additionaly
             self.name_to_constant,
         )
         gm = graph_converter.convert()
+
+        # Post-proccessing step to deal with quantized operators.
+        replace_quantized_ops_with_standard_ops(gm)
         log.info("GraphModule: %s", gm.print_readable(print_output=False))
 
         ep = self.retrace_as_exported_program(
