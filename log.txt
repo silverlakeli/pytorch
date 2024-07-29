@@ -1,0 +1,200 @@
+============================= test session starts ==============================
+platform linux -- Python 3.10.14, pytest-7.3.2, pluggy-1.5.0
+rootdir: /data/users/jiashenc/pytorch
+configfile: pytest.ini
+plugins: xdoctest-1.1.0, hypothesis-5.35.1, xdist-3.3.1, rerunfailures-14.0, flakefinder-1.1.0, cpp-2.3.0
+collected 41 items / 40 deselected / 1 selected
+Running 1 items in this shard
+
+test/export/test_converter.py I0729 13:43:56.624000 1723095 torch/_export/converter.py:1025] 
+I0729 13:43:56.624000 1723095 torch/_export/converter.py:1025] TS2EPConverter logging starts from here.
+I0729 13:43:56.624000 1723095 torch/_export/converter.py:1025] 
+I0729 13:43:56.624000 1723095 torch/_export/converter.py:1025] INFO: (TORCH_LOGS="export" <cmd>)
+I0729 13:43:56.624000 1723095 torch/_export/converter.py:1025]     * Log TorchScript IR.
+I0729 13:43:56.624000 1723095 torch/_export/converter.py:1025] 
+I0729 13:43:56.624000 1723095 torch/_export/converter.py:1025] DEBUG: (TORCH_LOGS="+export" <cmd>), additionaly
+I0729 13:43:56.624000 1723095 torch/_export/converter.py:1025]     * Log conversion IR by IR in a format of [<conversion handler name>] converts [<IR>].
+I0729 13:43:56.624000 1723095 torch/_export/converter.py:1025]         
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039] TorchScript graph
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039] 
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039] graph(%x.1 : Float(4, 1, 4, 4, strides=[16, 16, 4, 1], requires_grad=0, device=cpu),
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]       %quant.scale : Float(1, strides=[1], requires_grad=0, device=cpu),
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]       %quant.zero_point : Long(1, strides=[1], requires_grad=0, device=cpu),
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]       %conv1._packed_params : __torch__.torch.classes.quantized.Conv2dPackedParamsBase,
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]       %conv2._packed_params : __torch__.torch.classes.quantized.Conv2dPackedParamsBase):
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]   %5 : __torch__.export.test_converter.___torch_mangle_4.Standalone = prim::CreateObject()
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]   %6 : int = prim::Constant[value=4](), scope: export.test_converter.Standalone::/torch.ao.nn.quantized.modules.conv.Conv2d::conv1 # /data/users/jiashenc/pytorch/torch/ao/nn/quantized/modules/conv.py:588:31
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]   %7 : str = prim::Constant[value="Input shape must be `(N, C, H, W)`!"](), scope: export.test_converter.Standalone::/torch.ao.nn.quantized.modules.conv.Conv2d::conv1 # /data/users/jiashenc/pytorch/torch/ao/nn/quantized/modules/conv.py:589:29
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]   %8 : str = prim::Constant[value="builtins.ValueError"](), scope: export.test_converter.Standalone::/torch.ao.nn.quantized.modules.conv.Conv2d::conv1 # /data/users/jiashenc/pytorch/torch/ao/nn/quantized/modules/conv.py:589:18
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]   %self.conv2.zero_point : int = prim::Constant[value=170]()
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]   %self.conv2.scale : float = prim::Constant[value=0.0077471621334552765]()
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]   %self.conv1.zero_point : int = prim::Constant[value=120]()
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]   %self.conv1.scale : float = prim::Constant[value=0.016129449009895325]()
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]   %self.quant.dtype : int = prim::Constant[value=13]()
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]   %quant : __torch__.torch.ao.nn.quantized.modules.___torch_mangle_5.Quantize = prim::GetAttr[name="quant"](%5), scope: export.test_converter.Standalone::
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]   %scale.1 : Tensor = prim::GetAttr[name="scale"](%quant), scope: export.test_converter.Standalone::/torch.ao.nn.quantized.modules.Quantize::quant
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]   %16 : float = aten::Float(%scale.1), scope: export.test_converter.Standalone::/torch.ao.nn.quantized.modules.Quantize::quant # /data/users/jiashenc/pytorch/torch/ao/nn/quantized/modules/__init__.py:124:15
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]   %zero_point.1 : Tensor = prim::GetAttr[name="zero_point"](%quant), scope: export.test_converter.Standalone::/torch.ao.nn.quantized.modules.Quantize::quant
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]   %18 : int = aten::Int(%zero_point.1), scope: export.test_converter.Standalone::/torch.ao.nn.quantized.modules.Quantize::quant # /data/users/jiashenc/pytorch/torch/ao/nn/quantized/modules/__init__.py:124:34
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]   %x.5 : Tensor = aten::quantize_per_tensor(%x.1, %16, %18, %self.quant.dtype), scope: export.test_converter.Standalone::/torch.ao.nn.quantized.modules.Quantize::quant # /data/users/jiashenc/pytorch/torch/ao/nn/quantized/modules/__init__.py:123:15
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]   %conv1 : __torch__.torch.ao.nn.quantized.modules.conv.___torch_mangle_6.Conv2d = prim::GetAttr[name="conv1"](%5), scope: export.test_converter.Standalone::
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]   %21 : int[] = aten::size(%x.5), scope: export.test_converter.Standalone::/torch.ao.nn.quantized.modules.conv.Conv2d::conv1 # <string>:13:9
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]   %22 : int = aten::len(%21), scope: export.test_converter.Standalone::/torch.ao.nn.quantized.modules.conv.Conv2d::conv1 # /data/users/jiashenc/pytorch/torch/ao/nn/quantized/modules/conv.py:588:11
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]   %23 : bool = aten::ne(%22, %6), scope: export.test_converter.Standalone::/torch.ao.nn.quantized.modules.conv.Conv2d::conv1 # /data/users/jiashenc/pytorch/torch/ao/nn/quantized/modules/conv.py:588:11
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]    = prim::If(%23), scope: export.test_converter.Standalone::/torch.ao.nn.quantized.modules.conv.Conv2d::conv1 # /data/users/jiashenc/pytorch/torch/ao/nn/quantized/modules/conv.py:588:8
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]     block0():
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]        = prim::RaiseException(%7, %8), scope: export.test_converter.Standalone::/torch.ao.nn.quantized.modules.conv.Conv2d::conv1 # /data/users/jiashenc/pytorch/torch/ao/nn/quantized/modules/conv.py:589:12
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]       -> ()
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]     block1():
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]       -> ()
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]   %_packed_params.1 : __torch__.torch.classes.quantized.Conv2dPackedParamsBase = prim::GetAttr[name="_packed_params"](%conv1), scope: export.test_converter.Standalone::/torch.ao.nn.quantized.modules.conv.Conv2d::conv1
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]   %x.9 : Tensor = quantized::conv2d(%x.5, %_packed_params.1, %self.conv1.scale, %self.conv1.zero_point), scope: export.test_converter.Standalone::/torch.ao.nn.quantized.modules.conv.Conv2d::conv1 # /data/users/jiashenc/pytorch/torch/ao/nn/quantized/modules/conv.py:595:15
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]   %conv2 : __torch__.torch.ao.nn.quantized.modules.conv.___torch_mangle_6.Conv2d = prim::GetAttr[name="conv2"](%5), scope: export.test_converter.Standalone::
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]   %27 : int[] = aten::size(%x.9), scope: export.test_converter.Standalone::/torch.ao.nn.quantized.modules.conv.Conv2d::conv2 # <string>:13:9
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]   %28 : int = aten::len(%27), scope: export.test_converter.Standalone::/torch.ao.nn.quantized.modules.conv.Conv2d::conv2 # /data/users/jiashenc/pytorch/torch/ao/nn/quantized/modules/conv.py:588:11
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]   %29 : bool = aten::ne(%28, %6), scope: export.test_converter.Standalone::/torch.ao.nn.quantized.modules.conv.Conv2d::conv2 # /data/users/jiashenc/pytorch/torch/ao/nn/quantized/modules/conv.py:588:11
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]    = prim::If(%29), scope: export.test_converter.Standalone::/torch.ao.nn.quantized.modules.conv.Conv2d::conv2 # /data/users/jiashenc/pytorch/torch/ao/nn/quantized/modules/conv.py:588:8
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]     block0():
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]        = prim::RaiseException(%7, %8), scope: export.test_converter.Standalone::/torch.ao.nn.quantized.modules.conv.Conv2d::conv2 # /data/users/jiashenc/pytorch/torch/ao/nn/quantized/modules/conv.py:589:12
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]       -> ()
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]     block1():
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]       -> ()
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]   %_packed_params : __torch__.torch.classes.quantized.Conv2dPackedParamsBase = prim::GetAttr[name="_packed_params"](%conv2), scope: export.test_converter.Standalone::/torch.ao.nn.quantized.modules.conv.Conv2d::conv2
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]   %x.13 : Tensor = quantized::conv2d(%x.9, %_packed_params, %self.conv2.scale, %self.conv2.zero_point), scope: export.test_converter.Standalone::/torch.ao.nn.quantized.modules.conv.Conv2d::conv2 # /data/users/jiashenc/pytorch/torch/ao/nn/quantized/modules/conv.py:595:15
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]   %x.17 : Tensor = aten::dequantize(%x.13), scope: export.test_converter.Standalone::/torch.ao.nn.quantized.modules.DeQuantize::dequant # /data/users/jiashenc/pytorch/torch/ao/nn/quantized/modules/__init__.py:158:15
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039]   return (%x.17)
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039] 
+I0729 13:43:56.655000 1723095 torch/_export/converter.py:1039] 
+/data/users/jiashenc/pytorch/torch/fx/graph.py:1571: UserWarning: Node conv1__packed_params target conv1._packed_params _packed_params of conv1 does not reference an nn.Module, nn.Parameter, or buffer, which is what 'get_attr' Nodes typically target
+  warnings.warn(f'Node {node} target {node.target} {atom} of {seen_qualname} does '
+/data/users/jiashenc/pytorch/torch/fx/graph.py:1571: UserWarning: Node conv2__packed_params target conv2._packed_params _packed_params of conv2 does not reference an nn.Module, nn.Parameter, or buffer, which is what 'get_attr' Nodes typically target
+  warnings.warn(f'Node {node} target {node.target} {atom} of {seen_qualname} does '
+/data/users/jiashenc/pytorch/torch/fx/graph.py:1571: UserWarning: Node conv1__packed_params_1 target conv1._packed_params _packed_params of conv1 does not reference an nn.Module, nn.Parameter, or buffer, which is what 'get_attr' Nodes typically target
+  warnings.warn(f'Node {node} target {node.target} {atom} of {seen_qualname} does '
+/data/users/jiashenc/pytorch/torch/fx/graph.py:1571: UserWarning: Node conv2__packed_params_1 target conv2._packed_params _packed_params of conv2 does not reference an nn.Module, nn.Parameter, or buffer, which is what 'get_attr' Nodes typically target
+  warnings.warn(f'Node {node} target {node.target} {atom} of {seen_qualname} does '
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083] GraphModule: class GraphModule(torch.nn.Module):
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]     def forward(self, x_1):
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         # No stacktrace found for following nodes
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         quant_scale = self.quant.scale
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         quant_zero_point = self.quant.zero_point
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         conv1__packed_params = self.conv1._packed_params
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         conv2__packed_params = self.conv2._packed_params
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         quant_scale_1 = self.quant.scale
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         float_tensor = torch.ops.aten.Float.Tensor(quant_scale_1);  quant_scale_1 = None
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         quant_zero_point_1 = self.quant.zero_point
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         _to_copy_default = torch.ops.aten._to_copy.default(quant_zero_point_1, dtype = torch.int32);  quant_zero_point_1 = None
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         _local_scalar_dense_default = torch.ops.aten._local_scalar_dense.default(_to_copy_default);  _to_copy_default = None
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         quantize_per_tensor_default = torch.ops.aten.quantize_per_tensor.default(x_1, float_tensor, _local_scalar_dense_default, 13)
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         sym_size = torch.ops.aten.sym_size(get_quantized)
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         len_1 = len(sym_size);  sym_size = None
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         ne_int = torch.ops.aten.ne.int(len_1, 4);  len_1 = None
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         subgraph_0 = self.subgraph_0
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         subgraph_1 = self.subgraph_1
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         cond = torch.cond(ne_int, subgraph_0, subgraph_1, ());  ne_int = subgraph_0 = subgraph_1 = None
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         conv1__packed_params_1 = self.conv1._packed_params
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         sym_size_1 = torch.ops.aten.sym_size(get_quantized_1)
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         len_2 = len(sym_size_1);  sym_size_1 = None
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         ne_int_1 = torch.ops.aten.ne.int(len_2, 4);  len_2 = None
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         subgraph_2 = self.subgraph_2
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         subgraph_3 = self.subgraph_3
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         cond_1 = torch.cond(ne_int_1, subgraph_2, subgraph_3, ());  ne_int_1 = subgraph_2 = subgraph_3 = None
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         conv2__packed_params_1 = self.conv2._packed_params
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         dequantize_self = torch.ops.aten.dequantize.self(get_quantized_2);  get_quantized_2 = None
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         return dequantize_self
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         calculate_qmin_qmax = torch.ao.quantization.utils.calculate_qmin_qmax(None, None, False, 13, False)
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         getitem = calculate_qmin_qmax[0]
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         getitem_1 = calculate_qmin_qmax[1];  calculate_qmin_qmax = None
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         get_dequantized = torch._export.passes.replace_quantized_ops_with_standard_ops_pass.get_dequantized(x_1, float_tensor, _local_scalar_dense_default, getitem, getitem_1, 13, None, torch.per_tensor_affine);  x_1 = None
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         get_quantized = torch._export.passes.replace_quantized_ops_with_standard_ops_pass.get_quantized(get_dequantized, float_tensor, _local_scalar_dense_default, getitem, getitem_1, 13, torch.per_tensor_affine);  get_dequantized = float_tensor = _local_scalar_dense_default = getitem = getitem_1 = None
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         conv2d = torch.ops.aten.conv2d(get_quantized, tensor([[[[-0.9383]]]]), Parameter containing:
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         tensor([-0.1962], requires_grad=True));  get_quantized = None
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         _get_dtype = torch._export.passes.replace_quantized_ops_with_standard_ops_pass._get_dtype(conv2d)
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         calculate_qmin_qmax_1 = torch.ao.quantization.utils.calculate_qmin_qmax(None, None, False, _get_dtype, False)
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         getitem_2 = calculate_qmin_qmax_1[0]
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         getitem_3 = calculate_qmin_qmax_1[1];  calculate_qmin_qmax_1 = None
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         get_dequantized_1 = torch._export.passes.replace_quantized_ops_with_standard_ops_pass.get_dequantized(conv2d, 0.016129449009895325, 120, getitem_2, getitem_3, _get_dtype, None, torch.per_tensor_affine);  conv2d = None
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         get_quantized_1 = torch._export.passes.replace_quantized_ops_with_standard_ops_pass.get_quantized(get_dequantized_1, 0.016129449009895325, 120, getitem_2, getitem_3, _get_dtype, torch.per_tensor_affine);  get_dequantized_1 = getitem_2 = getitem_3 = _get_dtype = None
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         conv2d_1 = torch.ops.aten.conv2d(get_quantized_1, tensor([[[[-0.4822]]]]), Parameter containing:
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         tensor([-0.2667], requires_grad=True));  get_quantized_1 = None
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         _get_dtype_1 = torch._export.passes.replace_quantized_ops_with_standard_ops_pass._get_dtype(conv2d_1)
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         calculate_qmin_qmax_2 = torch.ao.quantization.utils.calculate_qmin_qmax(None, None, False, _get_dtype_1, False)
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         getitem_4 = calculate_qmin_qmax_2[0]
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         getitem_5 = calculate_qmin_qmax_2[1];  calculate_qmin_qmax_2 = None
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         get_dequantized_2 = torch._export.passes.replace_quantized_ops_with_standard_ops_pass.get_dequantized(conv2d_1, 0.0077471621334552765, 170, getitem_4, getitem_5, _get_dtype_1, None, torch.per_tensor_affine);  conv2d_1 = None
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         get_quantized_2 = torch._export.passes.replace_quantized_ops_with_standard_ops_pass.get_quantized(get_dequantized_2, 0.0077471621334552765, 170, getitem_4, getitem_5, _get_dtype_1, torch.per_tensor_affine);  get_dequantized_2 = getitem_4 = getitem_5 = _get_dtype_1 = None
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]     class GraphModule(torch.nn.Module):
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         def forward(self):
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]             # No stacktrace found for following nodes
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]             raise_exception_default = torch.ops.prim.RaiseException.default('Input shape must be `(N, C, H, W)`!', 'builtins.ValueError')
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]             return []
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]             
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]     class GraphModule(torch.nn.Module):
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         def forward(self):
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]             return []
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]             
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]     class GraphModule(torch.nn.Module):
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         def forward(self):
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]             # No stacktrace found for following nodes
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]             raise_exception_default = torch.ops.prim.RaiseException.default('Input shape must be `(N, C, H, W)`!', 'builtins.ValueError')
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]             return []
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]             
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]     class GraphModule(torch.nn.Module):
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]         def forward(self):
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]             return []
+I0729 13:43:56.688000 1723095 torch/_export/converter.py:1083]             
+script graph(%self : __torch__.export.test_converter.Standalone,
+      %x.1 : Tensor):
+  %quant : __torch__.torch.ao.nn.quantized.modules.Quantize = prim::GetAttr[name="quant"](%self)
+  %x.5 : Tensor = prim::CallMethod[name="forward"](%quant, %x.1) # /data/users/jiashenc/pytorch/test/export/test_converter.py:1307:20
+  %conv1 : __torch__.torch.ao.nn.quantized.modules.conv.Conv2d = prim::GetAttr[name="conv1"](%self)
+  %x.9 : Tensor = prim::CallMethod[name="forward"](%conv1, %x.5) # /data/users/jiashenc/pytorch/test/export/test_converter.py:1308:20
+  %conv2 : __torch__.torch.ao.nn.quantized.modules.conv.Conv2d = prim::GetAttr[name="conv2"](%self)
+  %x.13 : Tensor = prim::CallMethod[name="forward"](%conv2, %x.9) # /data/users/jiashenc/pytorch/test/export/test_converter.py:1309:20
+  %dequant : __torch__.torch.ao.nn.quantized.modules.DeQuantize = prim::GetAttr[name="dequant"](%self)
+  %x.17 : Tensor = prim::CallMethod[name="forward"](%dequant, %x.13) # /data/users/jiashenc/pytorch/test/export/test_converter.py:1311:20
+  return (%x.17)
+
+F
+
+=================================== FAILURES ===================================
+_______________ TestConverter.test_ts2ep_convert_quantized_model _______________
+Traceback (most recent call last):
+  File "/data/users/jiashenc/pytorch/test/export/test_converter.py", line 1327, in test_ts2ep_convert_quantized_model
+    self._check_equal_ts_ep_converter(
+  File "/data/users/jiashenc/pytorch/test/export/test_converter.py", line 107, in _check_equal_ts_ep_converter
+    ep = TS2EPConverter(ts_model, inp).convert()
+  File "/data/users/jiashenc/pytorch/torch/_export/converter.py", line 1085, in convert
+    ep = self.retrace_as_exported_program(
+  File "/data/users/jiashenc/pytorch/torch/_export/converter.py", line 1133, in retrace_as_exported_program
+    ep = torch.export._trace._export(
+  File "/data/users/jiashenc/pytorch/torch/export/_trace.py", line 1057, in wrapper
+    raise e
+  File "/data/users/jiashenc/pytorch/torch/export/_trace.py", line 1029, in wrapper
+    ep = fn(*args, **kwargs)
+  File "/data/users/jiashenc/pytorch/torch/export/exported_program.py", line 101, in wrapper
+    return fn(*args, **kwargs)
+  File "/data/users/jiashenc/pytorch/torch/export/_trace.py", line 2011, in _export
+    export_artifact = export_func(  # type: ignore[operator]
+  File "/data/users/jiashenc/pytorch/torch/export/_trace.py", line 1799, in _non_strict_export
+    with _fakify_script_objects(mod, fake_args, fake_kwargs, fake_mode) as (
+  File "/home/jiashenc/.conda/envs/pytorch-3.10/lib/python3.10/contextlib.py", line 135, in __enter__
+    return next(self.gen)
+  File "/data/users/jiashenc/pytorch/torch/_export/non_strict_utils.py", line 446, in _fakify_script_objects
+    fake_script_obj = _maybe_fakify_obj(obj)
+  File "/data/users/jiashenc/pytorch/torch/_export/non_strict_utils.py", line 430, in _maybe_fakify_obj
+    fake_obj = torch._library.fake_class_registry.maybe_to_fake_obj(fake_mode, obj)
+  File "/data/users/jiashenc/pytorch/torch/_library/fake_class_registry.py", line 129, in maybe_to_fake_obj
+    flat_x = x.__obj_flatten__()  # type: ignore[attr-defined]
+AttributeError: __torch__.torch.classes.quantized.Conv2dPackedParamsBase (of Python compilation unit at: 0) does not have a field with name '__obj_flatten__'
+
+To execute this test, run the following from the base repo dir:
+    python test/export/test_converter.py -k TestConverter.test_ts2ep_convert_quantized_model
+
+This message can be suppressed by setting PYTORCH_PRINT_REPRO_ON_FAILURE=0
+=========================== short test summary info ============================
+FAILED [0.2800s] test/export/test_converter.py::TestConverter::test_ts2ep_convert_quantized_model
+======================= 1 failed, 40 deselected in 1.67s =======================
+I0729 13:43:56.808000 1723095 torch/_dynamo/utils.py:389] TorchDynamo compilation metrics:
+I0729 13:43:56.808000 1723095 torch/_dynamo/utils.py:389] Function, Runtimes (s)

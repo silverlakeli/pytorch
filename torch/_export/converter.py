@@ -1082,6 +1082,7 @@ DEBUG: (TORCH_LOGS="+export" <cmd>), additionaly
         replace_quantized_ops_with_standard_ops(gm)
         log.info("GraphModule: %s", gm.print_readable(print_output=False))
 
+        breakpoint()
         ep = self.retrace_as_exported_program(
             gm,
             graph_converter.name_to_constant,

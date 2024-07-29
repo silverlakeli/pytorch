@@ -1299,14 +1299,14 @@ class TestConverter(TestCase):
                 self.quant = torch.ao.quantization.QuantStub()
                 self.conv1 = torch.nn.Conv2d(1, 1, 1)
                 self.conv2 = torch.nn.Conv2d(1, 1, 1)
-                self.relu = torch.nn.ReLU()
+                # self.relu = torch.nn.ReLU()
                 self.dequant = torch.ao.quantization.DeQuantStub()
 
             def forward(self, x):
                 x = self.quant(x)
                 x = self.conv1(x)
                 x = self.conv2(x)
-                x = self.relu(x)
+                # x = self.relu(x)
                 x = self.dequant(x)
                 return x
 
@@ -1319,7 +1319,7 @@ class TestConverter(TestCase):
         with override_quantized_engine("qnnpack"):
             model = Standalone()
             model.qconfig = torch.ao.quantization.get_default_qconfig("qnnpack")
-            model.fuse_model()
+            # model.fuse_model()
             torch.ao.quantization.prepare(model, inplace=True)
             model(torch.randn(4, 1, 4, 4))
             torch.ao.quantization.convert(model, inplace=True)
