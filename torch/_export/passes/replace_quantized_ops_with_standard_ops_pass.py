@@ -122,12 +122,6 @@ def get_qmin_qmax(dtype):
     return calculate_qmin_qmax(None, None, False, dtype, False)
 
 
-def get_mod_attr(mod, attr_name):
-    for attr in attr_name.split("."):
-        mod = getattr(mod, attr)
-    return mod
-
-
 def fx_get_qmin_qmax(gm, dtype_node):
     q_min_max_node = gm.graph.call_function(
         calculate_qmin_qmax, (None, None, False, dtype_node, False)
@@ -135,6 +129,12 @@ def fx_get_qmin_qmax(gm, dtype_node):
     qmin_node = gm.graph.call_function(operator.getitem, (q_min_max_node, 0))
     qmax_node = gm.graph.call_function(operator.getitem, (q_min_max_node, 1))
     return qmin_node, qmax_node
+
+
+def get_mod_attr(mod, attr_name):
+    for attr in attr_name.split("."):
+        mod = getattr(mod, attr)
+    return mod
 
 
 def get_dequantize_param_by_index(gm, param_node, index=0, dequant=True):
@@ -259,8 +259,15 @@ def replace_quantized_ops_with_standard_ops(gm: torch.fx.GraphModule):
                 pass
 
     # Post-processing again to remove get_attr node on ScriptObjects.
+    attr_names = set()
     for node in gm.graph.nodes:
         if node.op == "get_attr":
             mod = get_mod_attr(gm, node.target)
             if isinstance(mod, torch.ScriptObject):
                 gm.graph.erase_node(node)
+                attr_names.add(node.target)
+    
+    for attr_name in attr_names:
+        pmod = get_mod_attr(gm, ".".join(attr_name.split(".")[:-1]))
+        delattr(pmod, attr_name.split(".")[-1])
+            
