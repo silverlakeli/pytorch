@@ -448,6 +448,17 @@ class TS2FXGraphConverter:
 
             self.name_to_node[name] = fx_node
 
+    def convert_aten_Float(self, node: torch._C.Node):
+        def to_float_tensor(t):
+            return t.to(dtype=torch.float).item()
+
+        inp_list = [self.get_fx_value(inp) for inp in node.inputs()]  # noqa: C416
+        fx_node = self.fx_graph.call_function(
+            to_float_tensor,
+            tuple(inp_list),
+        )
+        self.name_to_node[node.output().debugName()] = fx_node
+
     def convert_aten_tensor(self, node: torch._C.Node):
         """aten::tensor creates a constant tensor ad-hoc --> GetAttr"""
         args, kwargs = self.get_args_kwargs(node, torch.ops.aten.tensor.default._schema)
