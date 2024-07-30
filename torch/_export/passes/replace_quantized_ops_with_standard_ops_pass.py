@@ -12,6 +12,8 @@ from torch.ao.quantization.fx._decomposed import (
 from torch.ao.quantization.utils import calculate_qmin_qmax
 
 
+_INPUT_Q_DTYPE = None
+
 _TORCH_DTYPE_TO_ENUM = {
     torch.uint8: 0,
     torch.int8: 1,
@@ -32,6 +34,7 @@ _TORCH_DTYPE_TO_ENUM = {
 
 _TORCH_ENUM_TO_DTYPE = {value: key for key, value in _TORCH_DTYPE_TO_ENUM.items()}
 
+
 def enum_to_dtype(val):
     if isinstance(val, torch.dtype):
         return val
@@ -44,10 +47,7 @@ def enum_to_dtype(val):
 
 
 def fx_enum_to_dtype(gm, val):
-    return gm.graph.call_function(
-        enum_to_dtype,
-        (val,)
-    )
+    return gm.graph.call_function(enum_to_dtype, (val,))
 
 
 def get_quantized(
@@ -158,7 +158,7 @@ def fx_get_dequantized(
                 qmin_node,
                 qmax_node,
                 dtype_node,
-            )
+            ),
         )
     else:
         raise RuntimeError(f"Unsupported dequantization scheme: {qscheme}")
@@ -240,9 +240,7 @@ def fx_transform_quantized_op_to_standard_op(gm, node):
         return t.dtype
 
     gm.graph.inserting_before(node)
-    # dtype_node = gm.graph.call_function(_get_dtype, (op_res_node,))
-    dtype_node = torch.int8
-    qmin_node, qmax_node = fx_get_qmin_qmax(gm, dtype_node)
+    qmin_node, qmax_node = fx_get_qmin_qmax(gm, _INPUT_Q_DTYPE)
 
     q_fx_node = fx_get_quantized(
         gm,
@@ -251,7 +249,7 @@ def fx_transform_quantized_op_to_standard_op(gm, node):
         zero_point_node,
         qmin_node,
         qmax_node,
-        dtype_node,
+        _INPUT_Q_DTYPE,
         torch.per_tensor_affine,
     )
     dq_fx_node = fx_get_dequantized(
@@ -261,7 +259,7 @@ def fx_transform_quantized_op_to_standard_op(gm, node):
         zero_point_node,
         qmin_node,
         qmax_node,
-        dtype_node,
+        _INPUT_Q_DTYPE,
         None,
         torch.per_tensor_affine,
     )
@@ -269,6 +267,7 @@ def fx_transform_quantized_op_to_standard_op(gm, node):
 
 
 def replace_quantized_ops_with_standard_ops(gm: torch.fx.GraphModule):
+    global _INPUT_Q_DTYPE
     for node in gm.graph.nodes:
         if isinstance(node.target, OpOverload):
             namespace, opname = node.target.namespace, node.target._opname
@@ -280,6 +279,7 @@ def replace_quantized_ops_with_standard_ops(gm: torch.fx.GraphModule):
                 inp_node, scale_node, zero_point_node, dtype_node = node.args
                 gm.graph.inserting_before(node)
                 dtype_node = fx_enum_to_dtype(gm, dtype_node)
+                _INPUT_Q_DTYPE = dtype_node
                 qmin_node, qmax_node = fx_get_qmin_qmax(gm, dtype_node)
                 q_fx_node = fx_get_quantized(
                     gm,
@@ -308,7 +308,7 @@ def replace_quantized_ops_with_standard_ops(gm: torch.fx.GraphModule):
                 # Dequantized value should be populated after each operator
                 # already, so we can directly pass that.
                 pass
-    
+
     # Post-processing again to remove get_attr node on ScriptObjects.
     attr_names = set()
     for node in gm.graph.nodes:
