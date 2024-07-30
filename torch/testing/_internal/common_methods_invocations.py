@@ -21414,7 +21414,8 @@ op_db: List[OpInfo] = [
             ),
         ),
     ),
-    OpInfo('_convert_weight_to_int4pack',
+    OpInfo(
+        '_convert_weight_to_int4pack',
         dtypes=_dispatch_dtypes((torch.uint8,)),
         supports_autograd=False,
         sample_inputs_func=sample_inputs__convert_weight_to_int4pack,
@@ -21438,6 +21439,16 @@ op_db: List[OpInfo] = [
                 'TestMeta',
                 'test_dispatch_meta_outplace',
                 active_if=TEST_WITH_ROCM and not CDNA2OrLater()),
+            DecorateInfo(
+                unittest.skip("Skipped with non-contiguous input!"),
+                'TestVmapOperatorsOpInfo',
+                'test_vmap_exhaustive',
+                device_type='cuda'),
+            DecorateInfo(
+                unittest.skip("Skipped with non-contiguous input!"),
+                'TestMeta',
+                'test_dispatch_symbolic_meta_outplace_all_strides',
+                device_type="cuda"),
         )),
 ]
 op_db += opinfo.definitions.op_db
