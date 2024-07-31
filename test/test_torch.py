@@ -10672,6 +10672,31 @@ tensor([[[1.+1.j, 1.+1.j, 1.+1.j,  ..., 1.+1.j, 1.+1.j, 1.+1.j],
         t7.d = "dog"
         self._checked_swap(t6, t7)
 
+    def test_c10_feature_enabled(self):
+        namespace = "movefast/knobs"
+        feature = "use_justknobs"
+
+        @contextlib.contextmanager
+        def mocksetting(v):
+            if IS_FBCODE:
+                from pyjk import PyPatchJustKnobs  # type: ignore[import]
+                with PyPatchJustKnobs().patch(f"{namespace}:{feature}", v):
+                    yield
+            else:
+                assert feature not in os.environ
+                os.environ[feature] = "1" if v else "0"
+                try:
+                    yield
+                finally:
+                    del os.environ[feature]
+
+        # check that an unset environment variable default is true
+        self.assertTrue(torch._C._c10_justknobs_check(namespace, feature, True))
+        with mocksetting(True):
+            self.assertTrue(torch._C._c10_justknobs_check(namespace, feature, True))
+        with mocksetting(False):
+            self.assertFalse(torch._C._c10_justknobs_check(namespace, feature, True))
+
 
 # The following block extends TestTorch with negative dim wrapping tests
 # FIXME: replace these with OpInfo sample inputs or systemic OpInfo tests
