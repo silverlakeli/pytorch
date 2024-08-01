@@ -421,6 +421,17 @@ def mse_loss_backward(
     return norm * (input - target) * grad_output
 
 
+@register_decomposition(aten._safe_softmax)
+def _safe_softmax(self, dim, dtype=None):
+    torch._check(
+        self.is_floating_point(),
+        lambda: f"Expected softmax matrix to be floating point, but got {self.dtype}",
+    )
+    out = torch.softmax(self, dim, dtype)
+    out = torch.nan_to_num(out)
+    return out
+
+
 @register_decomposition(aten.smooth_l1_loss)
 @out_wrapper()
 @pw_cast_for_opmath
@@ -1576,7 +1587,7 @@ def native_group_norm_backward(
     utils.check_same_shape(mean, rstd, allow_cpu_scalar_tensors=False)
     torch._check(
         input.numel() == N * C * HxW,
-        lambda: f"Expect input to have { N * C * HxW} elements",
+        lambda: f"Expect input to have {N * C * HxW} elements",
     )
     torch._check(
         mean.shape == (N, group),
