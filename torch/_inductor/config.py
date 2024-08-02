@@ -25,6 +25,9 @@ def autotune_remote_cache_default() -> Optional[bool]:
     return None
 
 
+# Whether to upcast float16 / bfloat16 to float32 in triton codegen
+triton_codegen_upcast_to_fp32 = True
+
 # add some debug printouts
 debug = False
 

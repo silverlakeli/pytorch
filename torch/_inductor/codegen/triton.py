@@ -429,7 +429,9 @@ class TritonPrinter(PythonPrinter):
         return f"libdevice.ceil({self._print(expr.args[0])}).to({V.kernel.index_dtype})"
 
     def _helper_sqrt(self, expr):
-        return f"libdevice.sqrt({self._print(expr)}.to(tl.float32))"
+        sqrt_code = f"libdevice.sqrt({self._print(expr)}"
+        dtype_cast = ".to(tl.float32))" if config.triton_codegen_upcast_to_fp32 else ")"
+        return sqrt_code + dtype_cast
 
     def _print_Where(self, expr):
         c = self.doprint(expr.args[0])
@@ -469,39 +471,57 @@ class TritonPrinter(PythonPrinter):
 
     def _print_OpaqueUnaryFn_cos(self, expr):
         assert len(expr.args) == 1
-        return f"libdevice.cos(({self._print(expr.args[0])}).to(tl.float32))"
+        cos_code = f"libdevice.cos(({self._print(expr.args[0])})"
+        dtype_cast = ".to(tl.float32))" if config.triton_codegen_upcast_to_fp32 else ")"
+        return cos_code + dtype_cast
 
     def _print_OpaqueUnaryFn_cosh(self, expr):
         assert len(expr.args) == 1
-        return f"libdevice.cosh(({self._print(expr.args[0])}).to(tl.float32))"
+        cosh_code = f"libdevice.cosh(({self._print(expr.args[0])})"
+        dtype_cast = ".to(tl.float32))" if config.triton_codegen_upcast_to_fp32 else ")"
+        return cosh_code + dtype_cast
 
     def _print_OpaqueUnaryFn_acos(self, expr):
         assert len(expr.args) == 1
-        return f"libdevice.acos(({self._print(expr.args[0])}).to(tl.float32))"
+        acos_code = f"libdevice.acos(({self._print(expr.args[0])})"
+        dtype_cast = ".to(tl.float32))" if config.triton_codegen_upcast_to_fp32 else ")"
+        return acos_code + dtype_cast
 
     def _print_OpaqueUnaryFn_sin(self, expr):
         assert len(expr.args) == 1
-        return f"libdevice.sin(({self._print(expr.args[0])}).to(tl.float32))"
+        sin_code = f"libdevice.sin(({self._print(expr.args[0])})"
+        dtype_cast = ".to(tl.float32))" if config.triton_codegen_upcast_to_fp32 else ")"
+        return sin_code + dtype_cast
 
     def _print_OpaqueUnaryFn_sinh(self, expr):
         assert len(expr.args) == 1
-        return f"libdevice.sinh(({self._print(expr.args[0])}).to(tl.float32))"
+        sinh_code = f"libdevice.sinh(({self._print(expr.args[0])})"
+        dtype_cast = ".to(tl.float32))" if config.triton_codegen_upcast_to_fp32 else ")"
+        return sinh_code + dtype_cast
 
     def _print_OpaqueUnaryFn_asin(self, expr):
         assert len(expr.args) == 1
-        return f"libdevice.asin(({self._print(expr.args[0])}).to(tl.float32))"
+        asin_code = f"libdevice.asin(({self._print(expr.args[0])})"
+        dtype_cast = ".to(tl.float32))" if config.triton_codegen_upcast_to_fp32 else ")"
+        return asin_code + dtype_cast
 
     def _print_OpaqueUnaryFn_tan(self, expr):
         assert len(expr.args) == 1
-        return f"libdevice.tan(({self._print(expr.args[0])}).to(tl.float32))"
+        tan_code = f"libdevice.tan(({self._print(expr.args[0])})"
+        dtype_cast = ".to(tl.float32))" if config.triton_codegen_upcast_to_fp32 else ")"
+        return tan_code + dtype_cast
 
     def _print_OpaqueUnaryFn_tanh(self, expr):
         assert len(expr.args) == 1
-        return f"libdevice.tanh(({self._print(expr.args[0])}).to(tl.float32))"
+        tanh_code = f"libdevice.tanh(({self._print(expr.args[0])})"
+        dtype_cast = ".to(tl.float32))" if config.triton_codegen_upcast_to_fp32 else ")"
+        return tanh_code + dtype_cast
 
     def _print_OpaqueUnaryFn_atan(self, expr):
         assert len(expr.args) == 1
-        return f"libdevice.atan(({self._print(expr.args[0])}).to(tl.float32))"
+        atan_code = f"libdevice.atan(({self._print(expr.args[0])})"
+        dtype_cast = ".to(tl.float32))" if config.triton_codegen_upcast_to_fp32 else ")"
+        return atan_code + dtype_cast
 
     def _print_RoundToInt(self, expr):
         assert len(expr.args) == 1
@@ -526,7 +546,10 @@ def triton_compute_type(dtype):
     triton_type_name = str(dtype).split(".")[-1]
     if triton_type_name == "bool":
         triton_type_name = "int1"
-    elif triton_type_name in ("float16", "bfloat16"):
+    elif (
+        triton_type_name in ("float16", "bfloat16")
+        and config.triton_codegen_upcast_to_fp32
+    ):
         # float16 math is done in float32 inside the kernel
         triton_type_name = "float32"
     elif triton_type_name == "float8_e4m3fn":
@@ -544,7 +567,10 @@ def _get_primitive_bitwidth(dtype):
     if hasattr(dtype, "is_floating_point"):
         if dtype.is_floating_point:
             # triton_compute_type changes the bitwidth
-            if dtype in [torch.bfloat16, torch.float16]:
+            if (
+                dtype in [torch.bfloat16, torch.float16]
+                and config.triton_codegen_upcast_to_fp32
+            ):
                 return 32
             return torch.finfo(dtype).bits
         else:
@@ -656,7 +682,10 @@ class TritonOverrides(OpOverrides):
         # In such as case, we will have to convert the input tensor to
         # its src_type, perform bitcast, and then convert the bit-casted
         # tensor back to float to ensure we use values with the right precision.
-        if src_dtype in (torch.float16, torch.bfloat16):
+        if (
+            src_dtype in (torch.float16, torch.bfloat16)
+            and config.triton_codegen_upcast_to_fp32
+        ):
             triton_src_dtype = str(src_dtype).split(".")[-1]
             cast_x = f"{x}.to(tl.{triton_src_dtype})"
             if dtype in (torch.float16, torch.bfloat16):
@@ -1763,7 +1792,10 @@ class TritonKernel(SIMDKernel):
                 line = f"tl.load({var} + ({indexing.index_str}), {indexing.mask_str}{ep}{other})"
 
             dtype = V.graph.get_dtype(name)
-            if dtype in (torch.float16, torch.bfloat16):
+            if (
+                dtype in (torch.float16, torch.bfloat16)
+                and config.triton_codegen_upcast_to_fp32
+            ):
                 line += ".to(tl.float32)"
             if dtype == torch.bool and torch.version.hip is None:
                 # Workaround for https://github.com/openai/triton/issues/2151
