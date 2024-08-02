@@ -14,7 +14,7 @@ import time
 import warnings
 from collections import namedtuple
 from datetime import timedelta
-from typing import Any, Callable, Dict, List, Optional, Tuple, TYPE_CHECKING, Union
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, TYPE_CHECKING, Union
 from typing_extensions import deprecated
 
 import torch
@@ -29,6 +29,7 @@ from torch._C._distributed_c10d import (
     AllreduceCoalescedOptions,
     AllreduceOptions,
     AllToAllOptions,
+    Backend as c10d_Backend,
     BarrierOptions,
     BroadcastOptions,
     DebugLevel,
@@ -1297,6 +1298,61 @@ def get_node_local_rank(fallback_rank: Optional[int] = None) -> int:
     )
 
 
+def _get_backends_for_timeout_set(group: ProcessGroup) -> Set[c10d_Backend]:
+    """
+    Return the all possible backends for a given process group when we
+    need to set the timeout for a ProcessGroup.
+
+    Args:
+        group (ProcessGroup): The process group to be set timeout.
+
+    Returns:
+        set[c10d_Backend]: A set of backends which we can set timeout for.
+    """
+    assert isinstance(group, ProcessGroup)
+    devices = group._device_types
+    backends = set()
+    if torch.device("cpu") in devices and is_gloo_available():
+        backend = group._get_backend(torch.device("cpu"))
+        if isinstance(backend, ProcessGroupGloo):
+            backends.add(backend)
+    if torch.device("cuda") in devices:
+        backend = group._get_backend(torch.device("cuda"))
+        if is_nccl_available() and isinstance(backend, ProcessGroupNCCL):
+            backends.add(backend)  # type: ignore[arg-type]
+        elif is_gloo_available() and isinstance(backend, ProcessGroupGloo):
+            backends.add(backend)  # type: ignore[arg-type]
+    if len(backends) == 0:
+        warnings.warn("Set timeout is now only supported for either nccl or gloo.")
+    return backends  # type: ignore[return-value]
+
+
+def _set_ephemeral_timeout_for_all_pgs(timeout: timedelta) -> None:
+    """
+    This API sets an ephemeral timeout extension for all PGs locally
+    on one rank. The timeout gets reset when the first collective issued
+    after API called finished.
+    NOTE: We only support to set timeout for cuda backends for now.
+    NOTE: While this feature
+    provides flexibility in specific scenarios, it introduces statefulness
+    to timeout setting. Therefore, it is advisable to use this API sparingly
+    and consider alternative approaches, such as directly setting the timeout
+    or utilizing a barrier collective (one can set any timeout to the barrier),
+    whenever feasible.
+
+    Args:
+        timeout (timedelta): The delta of timeout to extend.
+
+    Returns:
+        None.
+    """
+    for pg in _world.pg_map.keys():
+        backends = _get_backends_for_timeout_set(pg)
+        for backend in backends:
+            if is_nccl_available() and isinstance(backend, ProcessGroupNCCL):
+                backend._set_ephemeral_timeout(timeout)
+
+
 def _set_pg_timeout(timeout: timedelta, group: Optional[ProcessGroup] = None) -> None:
     """
     Set the timeout for the given process group when users want to use a different timeout instead of
@@ -1321,21 +1377,7 @@ def _set_pg_timeout(timeout: timedelta, group: Optional[ProcessGroup] = None) ->
         group = _get_default_group()
     if _rank_not_in_group(group):
         raise ValueError("Invalid process group specified")
-    assert isinstance(group, ProcessGroup)
-    devices = group._device_types
-    backends = set()
-    if torch.device("cpu") in devices and is_gloo_available():
-        backend = group._get_backend(torch.device("cpu"))
-        if isinstance(backend, ProcessGroupGloo):
-            backends.add(backend)
-    if torch.device("cuda") in devices:
-        backend = group._get_backend(torch.device("cuda"))
-        if is_nccl_available() and isinstance(backend, ProcessGroupNCCL):
-            backends.add(backend)  # type: ignore[arg-type]
-        elif is_gloo_available() and isinstance(backend, ProcessGroupGloo):
-            backends.add(backend)  # type: ignore[arg-type]
-    if len(backends) == 0:
-        warnings.warn("Set timeout is now only supported for either nccl or gloo.")
+    backends = _get_backends_for_timeout_set(group)
     for backend in backends:
         backend._set_default_timeout(timeout)
 
