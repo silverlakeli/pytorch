@@ -33,6 +33,7 @@ import torch.fx
 from torch import device, Tensor
 from torch._decomp import get_decompositions
 from torch._dynamo.utils import defake, dynamo_timed
+from torch._inductor.codegen import debug_utils
 from torch._logging import LazyString, trace_structured
 from torch._prims_common import make_channels_last_strides_for
 from torch._subclasses.fake_tensor import FakeTensor
@@ -445,6 +446,10 @@ class GraphLowering(torch.fx.Interpreter):
         self.effectful_ops: Dict[_EffectType, ir.Buffer] = {}
         self.aligned_inputs: OrderedSet[str] = OrderedSet()
         self.no_fuse_buffer_names: OrderedSet[str] = OrderedSet()
+
+        # Below fields are related to printing debug intermediate tensor values info for debugging
+        self.debug_printer = debug_utils.DebugPrinter()
+        self.all_codegen_kernel_names: Set[str] = set()  # noqa: F821
 
     def has_feature(
         self, device: Union[torch._inductor.ir.IRNode, device], feature: BackendFeature
@@ -1719,6 +1724,12 @@ class GraphLowering(torch.fx.Interpreter):
 
         self.wrapper_code.push_codegened_graph(self)
         self.scheduler.codegen()
+
+        log.debug(
+            "Finished codegen for all nodes. The list of kernel names available: %s",
+            V.graph.all_codegen_kernel_names,
+        )
+
         result = self.wrapper_code.generate(self.is_inference)
         self.wrapper_code.pop_codegened_graph()
         return result

@@ -1394,11 +1394,28 @@ class SIMDScheduling(BaseScheduling):
                     node.mark_run()
 
         self.codegen_comment(node_schedule)
+
+        # debug printing values of intermediate tensors
+        enable_debug_printer = config.aot_inductor.debug_intermediate_value_printer
+        if enable_debug_printer:
+            _, call_args, arg_types, _ = final_kernel.args.python_argdefs()
+            V.graph.all_codegen_kernel_names.add(kernel_name)
+            V.graph.debug_printer.codegen_intermediate_tensor_value_printer(
+                call_args, kernel_name, before_launch=True, arg_types=arg_types
+            )
+
         final_kernel.call_kernel(final_kernel.kernel_name)
+
         if config.nan_asserts:
             final_kernel.codegen_nan_check()
         if config.warn_mix_layout:
             final_kernel.warn_mix_layout(kernel_name)
+
+        if enable_debug_printer:
+            _, call_args, arg_types, _ = final_kernel.args.python_argdefs()
+            V.graph.debug_printer.codegen_intermediate_tensor_value_printer(
+                call_args, kernel_name, before_launch=False, arg_types=arg_types
+            )
 
         V.graph.removed_buffers |= final_kernel.removed_buffers
         V.graph.inplaced_to_remove |= final_kernel.inplaced_to_remove
@@ -1516,7 +1533,23 @@ class SIMDScheduling(BaseScheduling):
             kernel_name = self.define_kernel(src_code, node_schedule, kernel)
 
         self.codegen_comment(node_schedule)
+
+        # for printing out intermediate tensor debug value info
+        enable_debug_printer = config.aot_inductor.debug_intermediate_value_printer
+        _, call_args, arg_types, _ = kernel.args.python_argdefs()
+        if enable_debug_printer:
+            V.graph.all_codegen_kernel_names.add(kernel_name)
+            V.graph.debug_printer.codegen_intermediate_tensor_value_printer(
+                call_args, kernel_name, before_launch=True, arg_types=arg_types
+            )
+
         kernel.call_kernel(kernel_name, template_node.node)
+
+        if enable_debug_printer:
+            V.graph.debug_printer.codegen_intermediate_tensor_value_printer(
+                call_args, kernel_name, before_launch=False, arg_types=arg_types
+            )
+
         V.graph.removed_buffers |= kernel.removed_buffers
         V.graph.inplaced_to_remove |= kernel.inplaced_to_remove
         self.scheduler.free_buffers()

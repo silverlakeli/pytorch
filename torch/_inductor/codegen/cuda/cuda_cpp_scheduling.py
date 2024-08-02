@@ -100,6 +100,24 @@ class CUDACPPScheduling(BaseScheduling):
         with V.set_kernel_handler(kernel):
             node_schedule = [template_node]
             kernel_name = self.define_kernel(src_code, node_schedule)
+
+        # for printing out debug value info purpose
+        enable_debug_printer = config.aot_inductor.debug_intermediate_value_printer
+
+        if enable_debug_printer:
+            _, call_args, arg_types, _ = kernel.args.python_argdefs()
+            V.graph.all_codegen_kernel_names.add(kernel_name)
+            V.graph.debug_printer.codegen_intermediate_tensor_value_printer(
+                call_args, kernel_name, before_launch=True, arg_types=arg_types
+            )
+
         kernel.call_kernel(kernel_name, ctb)
+
+        if enable_debug_printer:
+            _, call_args, arg_types, _ = kernel.args.python_argdefs()
+            V.graph.debug_printer.codegen_intermediate_tensor_value_printer(
+                call_args, kernel_name, before_launch=False, arg_types=arg_types
+            )
+
         V.graph.removed_buffers |= kernel.removed_buffers
         self.scheduler.free_buffers()
