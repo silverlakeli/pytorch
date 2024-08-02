@@ -181,9 +181,10 @@ class SubclassCreationMeta:
     # We need to keep them around along with outer_size / outer_stride to plumb them
     # into __tensor_unflatten__
     attrs: Dict[str, Union["SubclassCreationMeta", None]]
-    outer_size: List[int]
-    outer_stride: List[int]
+    outer_size: List[Union[int, torch.SymInt]]
+    outer_stride: List[Union[int, torch.SymInt]]
     meta: Any
+    symint_placeholders: List[bool]
     # Stores the original subclass itself.
     # This is needed because we need the autograd metadata on the original subclass
     # (this is guaranteed to be a wrapper subclass that holds a fake tensor,
@@ -194,7 +195,31 @@ class SubclassCreationMeta:
     # Used at runtime to determine the subclass type, so we don't need to save the original subclass
     original_subclass_type: Optional[type] = None
 
-    def creation_fn(self, all_args, *, is_runtime: bool):
+    def compute_outer_size(
+        self,
+        all_args,
+        *,
+        curr_start_idx: int,
+        is_runtime: bool,
+    ):
+        is_symbolic = any(self.symint_placeholders)
+        num_symbolic = sum(self.symint_placeholders)
+
+        if is_runtime and is_symbolic:
+            start = curr_start_idx
+            end = start + num_symbolic
+            it = iter(all_args[start:end])
+            return pytree.tree_map_only(
+                torch.SymInt, lambda _: next(it), self.outer_size
+            )
+        return self.outer_size
+
+    def creation_fn(
+        self,
+        all_args,
+        *,
+        is_runtime: bool,
+    ):
         inner_tensors = {}
 
         curr_start_idx = self.flat_tensor_start_idx
@@ -213,8 +238,14 @@ class SubclassCreationMeta:
         else:
             original_subclass_type = type(self.original_subclass)
 
+        outer_size = self.compute_outer_size(
+            all_args,
+            curr_start_idx=curr_start_idx,
+            is_runtime=is_runtime,
+        )
+
         rebuilt = original_subclass_type.__tensor_unflatten__(  # type: ignore[attr-defined]
-            inner_tensors, self.meta, self.outer_size, self.outer_stride
+            inner_tensors, self.meta, outer_size, self.outer_stride
         )
 
         if not is_runtime:
