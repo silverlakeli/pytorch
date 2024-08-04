@@ -3316,7 +3316,7 @@ class TestDistributions(DistributionsTestCase):
 
         for dtype in [torch.float, torch.double, torch.bfloat16, torch.float16]:
             for lambd in [0.2, 0.5, 1.0, 1.5, 2.0, 5.0]:
-                sample_len = 50000
+                sample_len = 60000
                 mean_var(lambd, torch.rand(sample_len, dtype=dtype))
 
     @unittest.skipIf(not TEST_NUMPY, "NumPy not found")
@@ -3328,6 +3328,31 @@ class TestDistributions(DistributionsTestCase):
                 scipy.stats.expon(scale=1.0 / rate),
                 f"Exponential(rate={rate})",
             )
+
+    def test_exponential_duplicated_permutations(self):
+        def test_duplicated_permutations(type, sample_size, size, thre_size):
+            sample = torch.empty(sample_size, dtype=type).exponential_()
+            sample_list = sample.tolist()
+            for _ in range(thre_size):
+                test = torch.empty(size, dtype=type).exponential_()
+                allFound = True
+                for s in sample:
+                    if s not in test:
+                        allFound = False
+                        break
+                if not allFound:
+                    continue
+                # Check duplicated permutations
+                test_list = test.tolist()
+                found_indices = [
+                    i
+                    for i in range(size - sample_size + 1)
+                    if test_list[i] == sample_list[0]
+                ]
+                for i in found_indices:
+                    self.assertFalse(test_list[i : i + 100] == sample_list)
+
+        test_duplicated_permutations(torch.float, 100, 1024 * 1024 * 2, 10240)
 
     @set_default_dtype(torch.double)
     def test_laplace(self):

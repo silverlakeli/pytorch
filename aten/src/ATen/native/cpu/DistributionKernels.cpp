@@ -119,10 +119,7 @@ void exponential_kernel(TensorIteratorBase &iter, double lambda, std::optional<G
     {
       // See Note [Acquire lock when using random generators]
       std::lock_guard<std::mutex> lock(generator->mutex_);
-      if (self.scalar_type() == at::kDouble)
-        seed = generator->random64();
-      else
-        seed = generator->random();
+      seed = generator->random();
     }
     int64_t n = self.numel();
     bool contig = self.is_contiguous();
@@ -160,13 +157,13 @@ void exponential_kernel(TensorIteratorBase &iter, double lambda, std::optional<G
         if (len > 0) {
           VSLStreamStatePtr stream;
           if constexpr (std::is_same<scalar_t, double>::value) {
-            vslNewStream(&stream, VSL_BRNG_MCG31, seed);
+            vslNewStream(&stream, VSL_BRNG_MT19937, seed);
             vslSkipAheadStream(stream, begin);
             vdRngExponential(VSL_RNG_METHOD_EXPONENTIAL_ICDF, stream, len,
               (double *)(sample_ptr + begin), eps, 1./lambda);
             vslDeleteStream(&stream);
           } else {
-            vslNewStream(&stream, VSL_BRNG_MCG31, seed);
+            vslNewStream(&stream, VSL_BRNG_MT19937, seed);
             vslSkipAheadStream(stream, begin);
             vsRngExponential(VSL_RNG_METHOD_EXPONENTIAL_ICDF, stream, len,
               (float *) (sample_ptr + begin), eps, 1./lambda);
