@@ -1338,4 +1338,18 @@ Vectorized<c10::quint8> inline maximum(const Vectorized<c10::quint8>& a, const V
 }
 
 #endif // if defined(CPU_CAPABILITY_AVX2)
+#if defined(CPU_CAPABILITY_NEON)
+template <typename T>
+typename std::enable_if_t<std::is_same_v<T, int8_t>, at::vec::Vectorized<float>>
+inline convert_int8_to_float(at::vec::Vectorized<T> src) {
+  // Note: this function only convert inputs number of elements equal to at::vec::Vectorized<float>.size()
+    int8x8_t s8x8 = vld1_s8(src.operator const int8_t*());
+    int16x8_t s16x8 = vmovl_s8(s8x8);
+
+    int32x4_t s32x4_hi = vmovl_s16(vget_high_s16(s16x8));
+    int32x4_t s32x4_lo = vmovl_s16(vget_low_s16(s16x8));
+
+    return Vectorized<float>(vcvtq_f32_s32(s32x4_lo), vcvtq_f32_s32(s32x4_hi));
+}
+#endif
 }} // namespace at::vec::CPU_CAPABILITY
