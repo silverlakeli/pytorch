@@ -7,6 +7,7 @@ import logging
 import math
 import re
 import sys
+import warnings
 from copy import copy, deepcopy
 from enum import Enum
 from typing import cast, Dict, List, Optional, Sequence, Set, Tuple, Union
@@ -2454,6 +2455,8 @@ class CppVecKernel(CppKernel):
             if out_dtype.is_floating_point
             else torch.int64
         )
+        out_num_vectors = V.kernel._get_num_vectors(out_dtype)
+        src_num_vectors = V.kernel._get_num_vectors(dtype)
         code = IndentedBuffer()
         if self.tiling_idx >= self.reduction_depth:
             # Horizontal reduction
@@ -2464,9 +2467,15 @@ class CppVecKernel(CppKernel):
             # Vertical reduction
             if out_dtype != dtype:
                 converted_value = f"{DTYPE_TO_CPP[out_dtype]}_{value}"
-                code.writeline(
-                    f"auto {converted_value} = at::vec::convert<{DTYPE_TO_CPP[out_dtype]}>({value});"
-                )
+                if src_num_vectors == out_num_vectors == 1:
+                    code.writeline(
+                        f"auto {converted_value} = at::vec::convert<{DTYPE_TO_CPP[out_dtype]}>({value});"
+                    )
+                else:
+                    code.writeline(
+                        f"auto {converted_value} = at::vec::convert<{DTYPE_TO_CPP[out_dtype]},"
+                        f"{out_num_vectors},{DTYPE_TO_CPP[dtype]},{src_num_vectors}>({value});"
+                    )
                 value = converted_value
             code.splice(self._get_store_line(value, var, index, out_dtype))
         self.reduction_suffix.splice(code.map(lambda x: DeferredLine(name, x)))
@@ -3151,6 +3160,7 @@ class CppKernelProxy(CppKernel):
         sub_blocks = [scheduler_node._body.root_block] + list(
             scheduler_node._body.subblocks.values()
         )
+        all_node_support_lowp: bool = True
         for sub_block in sub_blocks:
             for _node in sub_block.graph.nodes:
                 # TODO(Eikan): Regarding get_index and index_expr, we should conclude the
@@ -3169,24 +3179,26 @@ class CppKernelProxy(CppKernel):
                     "neg",
                     "output",
                 ]:
-                    return False
+                    all_node_support_lowp = False
 
                 if hasattr(_node, "meta") and _node.meta:
                     assert OptimizationContext.key in _node.meta
                     opt_ctx: OptimizationContext = _node.meta[OptimizationContext.key]
                     if not opt_ctx.dtype or opt_ctx.dtype not in DTYPE_LOWP_FP:
-                        return False
-                    if _lowp_fp_type:
-                        assert (
-                            _lowp_fp_type == opt_ctx.dtype
-                        ), "scheduler node do not support bf16/fp16 mix"
+                        all_node_support_lowp = False
+                    elif _lowp_fp_type:
+                        if _lowp_fp_type != opt_ctx.dtype:
+                            warnings.warn(
+                                "bf16 and fp16 are mixed in the scheduler node. "
+                                f"Will use the first encountered {_lowp_fp_type}."
+                            )
                     else:
                         _lowp_fp_type = opt_ctx.dtype
+                        scheduler_node._lowp_fp_type = _lowp_fp_type  # type: ignore[attr-defined]
                 else:
-                    return False
+                    all_node_support_lowp = False
 
-        scheduler_node._lowp_fp_type = _lowp_fp_type  # type: ignore[attr-defined]
-        return True
+        return all_node_support_lowp
 
     def legalize_lowp_fp_dtype_loopbody(self, loop_body: ir.LoopBody):
         def add_to_dtype(sub_graph: torch.fx.Graph):
