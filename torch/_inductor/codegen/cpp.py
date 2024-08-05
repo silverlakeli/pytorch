@@ -174,7 +174,11 @@ def reduction_acc_type(reduction_type, dtype):
 
 
 def reduction_combine(
-    reduction_type, var, next_value, index: Optional[sympy.Symbol] = None
+    reduction_type,
+    var,
+    next_value,
+    index: Optional[sympy.Symbol] = None,
+    src_dtype=None,
 ):
     if reduction_type == "sum":
         return f"{var} + {next_value}"
@@ -1540,7 +1544,7 @@ class CppKernel(Kernel):
             [
                 f"for (int tid = 0; tid < {num_threads}; tid++)",
                 "{",
-                f"    {acc} = {reduction_combine_fn(reduction_type, acc, acc_local_in_array)};",
+                f"    {acc} = {reduction_combine_fn(reduction_type, acc, acc_local_in_array, dtype=dtype)};",
                 "}",
             ],
         )
@@ -2255,17 +2259,6 @@ class CppVecKernel(CppKernel):
         assert reduction_type in VECTORIZABLE_RTYPES
         argmax_or_argmin = reduction_type in {"argmax", "argmin"}
         horizontal_reduction = self.tiling_idx >= self.reduction_depth
-        if argmax_or_argmin:
-            assert src_dtype in (
-                torch.float32,
-                torch.int64,
-            )
-        else:
-            assert dtype == src_dtype
-        if reduction_type == "any":
-            assert dtype == torch.bool
-        else:
-            assert dtype in [torch.float64, torch.float, torch.int64]
         init_dtype = src_dtype if argmax_or_argmin else dtype
         assert isinstance(value, CppCSEVariable), value
 
@@ -2353,9 +2346,9 @@ class CppVecKernel(CppKernel):
                     + self.reduction_combine_vec(reduction_type, "x", "y")
                     + "; }"
                 )
-                is_any = reduction_type == "any"
+                is_bool = dtype == torch.bool
                 # we are using at::vec::VecMask<float, N> for bool
-                vec_dtype = "float" if is_any else DTYPE_TO_CPP[dtype]
+                vec_dtype = "float" if is_bool else DTYPE_TO_CPP[dtype]
                 vec = f"at::vec::Vectorized<{vec_dtype}>"
                 vec_reduce_all_func = f"at::vec::vec_reduce_all<{vec_dtype}>"
                 next_value = f"{vec_reduce_all_func}([]({vec}& x, {vec}& y) {reduce_all_body}, {acc_vec})"
@@ -2455,7 +2448,11 @@ class CppVecKernel(CppKernel):
             return f"{self._get_mask_type()}::from(0)"
 
         scalar_init = reduction_init(reduction_type, dtype)
-        return f"{vec_type}({scalar_init})"
+        vec_init = f"{vec_type}({scalar_init})"
+        if dtype == torch.bool:
+            assert reduction_type in ("min", "max")
+            return f"{self._get_mask_type()}::from({vec_init})"
+        return vec_init
 
     def reduction_acc_type_vec(self, reduction_type, dtype):
         scalar_type = DTYPE_TO_COMPUTATION_DTYPE[dtype]
@@ -2466,7 +2463,12 @@ class CppVecKernel(CppKernel):
             n_src = self._get_num_vectors(scalar_type)
             n_idx = self._get_num_vectors(torch.int64)
             return f"IndexValueVec<{DTYPE_TO_CPP[scalar_type]}, {n_src}, {n_idx}>"
-        if reduction_type == "any":
+        if dtype == torch.bool:
+            assert reduction_type in (
+                "min",
+                "max",
+                "any",
+            )
             return f"{self._get_mask_type()}"
         return vec_type
 
@@ -2489,10 +2491,19 @@ class CppVecKernel(CppKernel):
         horizontal_reduction: Optional[bool] = None,
         src_dtype: Optional[torch.dtype] = torch.float32,
     ):
+        is_bool = src_dtype == torch.bool
         if reduction_type == "max":
-            return f"at::vec::maximum({var}, {next_value})"
+            return (
+                f"{var} | {next_value}"
+                if is_bool
+                else f"at::vec::maximum({var}, {next_value})"
+            )
         elif reduction_type == "min":
-            return f"at::vec::minimum({var}, {next_value})"
+            return (
+                f"~({var} | {next_value})"
+                if is_bool
+                else f"at::vec::minimum({var}, {next_value})"
+            )
         elif reduction_type == "sum":
             return f"{var} + {next_value}"
         elif reduction_type == "prod":
@@ -2827,21 +2838,7 @@ class CppVecKernelChecker(CppVecKernel):
             return self.simd_vec
 
     def reduction(self, dtype, src_dtype, reduction_type, value):
-        argmin_argmax_vec = False
-        if reduction_type in ("argmin", "argmax") and src_dtype in (
-            torch.float,
-            torch.int64,
-        ):
-            assert dtype == torch.int64
-            argmin_argmax_vec = True
-        if not (
-            argmin_argmax_vec
-            or (src_dtype == torch.bool and reduction_type == "any")
-            or (dtype == torch.float and src_dtype == torch.float)
-            or (dtype == torch.double and src_dtype == torch.double)
-            or (dtype == torch.int64 and src_dtype == torch.int64)
-            and reduction_type in VECTORIZABLE_RTYPES
-        ):
+        if reduction_type not in VECTORIZABLE_RTYPES:
             self.disable_vec(
                 f"reduction: dtype {dtype}, src_dtype {src_dtype}, reduction_type {reduction_type}"
             )
