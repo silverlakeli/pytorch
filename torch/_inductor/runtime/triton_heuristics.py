@@ -1324,7 +1324,9 @@ def triton_config(
     return Config(cfg, num_warps=num_warps, num_stages=num_stages)
 
 
-def triton_config_reduction(size_hints, x, r, num_stages=1, num_warps=None) -> Config:
+def triton_config_reduction(
+    size_hints, x, r, num_stages=1, num_warps=None, is_persistent=False
+) -> Config:
     """
     Construct a reduction triton config with some adjustment heuristics
     based on size_hints. Size_hints is a tuple of numels in each tile
@@ -1350,9 +1352,12 @@ def triton_config_reduction(size_hints, x, r, num_stages=1, num_warps=None) -> C
         num_warps = conditional_product(x, r) // 128
     # On AMD GPU each warp has 64 lanes which is double the size on NV GPU,
     # therefore using half the number of warps here correspondingly.
-    default_num_warps = 4 if torch.version.hip else 8
+    max_num_warps = 8 if torch.version.hip else 16
+    # persistent reduction is register intensive
+    if is_persistent:
+        max_num_warps = max_num_warps // 2
     min_num_warps = 1 if torch.version.hip else 2
-    num_warps = next_power_of_2(min(max(num_warps, min_num_warps), default_num_warps))
+    num_warps = next_power_of_2(min(max(num_warps, min_num_warps), max_num_warps))
     check_config(cfg, xnumel=size_hints[0])
     assert r <= TRITON_MAX_BLOCK["R"], f"increase TRITON_MAX_BLOCK['r'] to {r}"
     return Config(cfg, num_warps=num_warps, num_stages=num_stages)
@@ -1606,7 +1611,7 @@ def persistent_reduction(
     xnumel, rnumel = size_hints
 
     configs = [
-        triton_config_reduction(size_hints, xblock, rnumel)
+        triton_config_reduction(size_hints, xblock, rnumel, is_persistent=True)
         for xblock in (1, 8, 32, 128)
         if xblock == 1 or (rnumel * xblock <= 4096 and xblock <= xnumel)
     ]
