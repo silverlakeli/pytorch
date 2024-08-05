@@ -3574,6 +3574,7 @@ def rev(x, dims):
     )
 
 
+# TODO: remove this when gcc 10 support is dropped in inductor
 @register_lowering(aten.constant_pad_nd, type_promotion_kind=None)
 def constant_pad_nd(x, padding, fill_value=0):
     assert (len(padding) % 2) == 0
