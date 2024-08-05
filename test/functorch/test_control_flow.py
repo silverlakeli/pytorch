@@ -2151,11 +2151,11 @@ def forward(self, x_1):
 
         result_gm = make_fx(f_wrapper(f), tracing_mode="symbolic")(example_input)
         for node in result_gm.true_graph_0.graph.nodes:
-            if node.op == "call_function":
+            if node.op == "call_function" and isinstance(node.target, torch._ops.OpOverload):
                 self.assertTrue(not node.target._schema.is_mutable)
 
         for node in result_gm.false_graph_0.graph.nodes:
-            if node.op == "call_function":
+            if node.op == "call_function" and isinstance(node.target, torch._ops.OpOverload):
                 self.assertTrue(not node.target._schema.is_mutable)
 
         self.assertEqual(result_gm(torch.ones(5, 5)), f(torch.ones(5, 5)))
@@ -2656,7 +2656,7 @@ def forward(self, arg0_1):
         self.assertEqual(gm(*example_inputs), f(*example_inputs))
 
         for node in gm.body_graph_0.graph.nodes:
-            if node.op == "call_function":
+            if node.op == "call_function" and isinstance(node.target, torch._ops.OpOverload):
                 self.assertTrue(not node.target._schema.is_mutable)
         self.check_map_count(gm, 1)
 
@@ -2685,7 +2685,7 @@ def forward(self, arg0_1):
         gm = make_fx(f_wrapper(f))(*example_inputs)
 
         for node in gm.body_graph_0.graph.nodes:
-            if node.op == "call_function":
+            if node.op == "call_function" and isinstance(node.target, torch._ops.OpOverload):
                 self.assertTrue(not node.target._schema.is_mutable)
 
         self.assertEqual(gm(*example_inputs), f(*example_inputs))
