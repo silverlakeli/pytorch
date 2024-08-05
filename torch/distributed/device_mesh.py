@@ -113,6 +113,41 @@ else:
 
             return res_submesh
 
+        def create_flatten_mesh(self, device_mesh: "DeviceMesh") -> "DeviceMesh":
+            root_mesh = _mesh_resources.get_root_mesh(device_mesh)
+            flatten_dims_in_root = [
+                root_mesh.mesh_dim_names.index(flattened_mesh_dim_name)
+                for flattened_mesh_dim_name in not_none(device_mesh.mesh_dim_names)
+            ]
+            # sort dims to flatten based on the order of the dims in the root mesh.
+            flatten_dims_in_root.sort()
+            flatten_mesh_dim_names = "_".join(
+                [root_mesh.mesh_dim_names[dim] for dim in flatten_dims_in_root]
+            )
+            flattened_mesh_dim_size = math.prod(device_mesh.mesh.size())
+
+            remained_dims_in_root = list(range(root_mesh.mesh.ndim))
+            for flatten_dim_in_root in flatten_dims_in_root:
+                remained_dims_in_root.remove(flatten_dim_in_root)
+
+            pg_ranks_by_dim = root_mesh.mesh.permute(
+                *remained_dims_in_root, *flatten_dims_in_root
+            ).reshape(-1, flattened_mesh_dim_size)
+
+            cur_rank = root_mesh.get_rank()
+            for mesh_nd in pg_ranks_by_dim:
+                # need to init backend here since the flattened pg doesn't exist in root mesh.
+                flattened_mesh = DeviceMesh(
+                    root_mesh.device_type,
+                    mesh_nd,
+                    mesh_dim_names=(flatten_mesh_dim_names,),
+                )
+                if cur_rank in mesh_nd:
+                    res_flattened_mesh = flattened_mesh
+            self.child_to_root_mapping[res_flattened_mesh] = root_mesh  # type: ignore[possibly-undefined]
+
+            return res_flattened_mesh
+
         def get_root_mesh(self, device_mesh: "DeviceMesh") -> "DeviceMesh":
             # If a mesh could not be found in the child_to_root_mapping, it is a root mesh itself.
             # A root mesh is not created through slicing.
@@ -651,6 +686,13 @@ else:
             dimensions of the mesh. If this rank is not part of the mesh, return None.
             """
             return self._coordinate_on_dim if self._coordinate_on_dim else None
+
+        def _flatten(self) -> "DeviceMesh":
+            """
+            Returns a 1D DeviceMesh created from flattening the current DeviceMesh.
+            """
+            flatten_mesh = _mesh_resources.create_flatten_mesh(self)
+            return flatten_mesh
 
     def init_device_mesh(
         device_type: str,
