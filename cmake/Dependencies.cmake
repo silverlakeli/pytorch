@@ -18,6 +18,22 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
  # UBSAN triggers when compiling protobuf, so we need to disable it.
 set(UBSAN_FLAG "-fsanitize=undefined")
 
+# ---[ Python Interpreter
+# If not given a Python installation, then use the current active Python
+if(NOT Python_EXECUTABLE)
+  execute_process(
+    COMMAND "which" "python3" RESULT_VARIABLE _exitcode OUTPUT_VARIABLE _py_exe)
+  if(${_exitcode} EQUAL 0)
+    if(NOT MSVC)
+      string(STRIP ${_py_exe} Python_EXECUTABLE)
+    endif()
+    message(STATUS "Setting Python to ${Python_EXECUTABLE}")
+  endif()
+else()
+  message(STATUS "Python_EXECUTABLE: ${Python_EXECUTABLE}")
+endif()
+
+
 macro(disable_ubsan)
   if(CMAKE_C_FLAGS MATCHES ${UBSAN_FLAG} OR CMAKE_CXX_FLAGS MATCHES ${UBSAN_FLAG})
     set(CAFFE2_UBSAN_ENABLED ON)
@@ -841,20 +857,6 @@ else()
   set(EIGEN3_INCLUDE_DIR ${CMAKE_CURRENT_LIST_DIR}/../third_party/eigen)
 endif()
 include_directories(SYSTEM ${EIGEN3_INCLUDE_DIR})
-
-
-# ---[ Python Interpreter
-# If not given a Python installation, then use the current active Python
-if(NOT Python_EXECUTABLE)
-  execute_process(
-    COMMAND "which" "python3" RESULT_VARIABLE _exitcode OUTPUT_VARIABLE _py_exe)
-  if(${_exitcode} EQUAL 0)
-    if(NOT MSVC)
-      string(STRIP ${_py_exe} Python_EXECUTABLE)
-    endif()
-    message(STATUS "Setting Python to ${Python_EXECUTABLE}")
-  endif()
-endif()
 
 if(BUILD_PYTHON)
   set(PYTHON_COMPONENTS Development.Module)
