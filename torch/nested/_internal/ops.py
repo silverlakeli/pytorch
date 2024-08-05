@@ -465,6 +465,24 @@ def to_copy_default(func, *args, **kwargs):
     return NestedTensor(new_values, **inp_kwargs)
 
 
+@register_jagged_func(
+    torch.ops.aten.copy_.default, "self: jt_all, src: jt_all, non_blocking: any?"
+)
+def copy_default(func, *args, **kwargs):
+    _, new_kwargs = normalize_function(
+        func, args=args, kwargs=kwargs, normalize_to_only_use_kwargs=True
+    )
+    inp = new_kwargs.pop("input")
+    src = new_kwargs.pop("src")
+    check_ragged_dim_same(func, inp, "self", src, "src")
+    if inp._ragged_idx != src._ragged_idx:
+        raise RuntimeError(
+            "copy_ only supports tensors that are the same size for Nested Tensor"
+        )
+    inp.values().copy_(src.values())
+    return inp
+
+
 register_jagged_func(torch.ops.aten.detach.default, "self: jt_all")(
     jagged_unary_pointwise
 )
